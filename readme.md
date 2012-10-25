@@ -1,7 +1,7 @@
 ﻿#PathSharp
 ##A simple and clean PATH editor
 
-[Screenshot](screenshots/ss.png)
+![ScreenShot](https://raw.github.com/ianobermiller/PathSharp/master/screenshots/ss.png)
 
 Controls:
  * Delete - remove a path
