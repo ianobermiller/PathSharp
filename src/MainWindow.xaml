@@ -33,10 +33,13 @@
         </ResourceDictionary>
     </Metro:MetroWindow.Resources>
     <DockPanel AllowDrop="True" Drop="OnDrop">
-        <TabControl DockPanel.Dock="Top" x:Name="uxTabs" SelectionChanged="uxTabsSelectionChanged">
-            <TabItem Header="Machine" />
-            <TabItem Header="User" />
-        </TabControl>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+            <TabControl x:Name="uxTabs" SelectionChanged="uxTabsSelectionChanged">
+                <TabItem Header="User" />
+                <TabItem Header="Machine" />
+            </TabControl>
+            <TextBlock x:Name="uxRestartAsAdminContainer" VerticalAlignment="Center">(<Hyperlink x:Name="uxRestartAsAdmin" Click="uxRestartAsAdminClick">restart as administrator to edit Machine-level vars</Hyperlink>)</TextBlock>
+        </StackPanel>
         <Grid DockPanel.Dock="Bottom">
             <TextBlock Text="Type a path and hit enter to add..." Visibility="{Binding Text.IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}, ElementName=uxNewPath}" Foreground="Gray" Margin="6,6" />
             <toolkit:AutoCompleteBox DockPanel.Dock="Bottom" x:Name="uxNewPath" KeyUp="uxNewPathKeyUp" Populating="uxNewPathPopulating" Template="{DynamicResource AutoCompleteBoxControlTemplate}" />

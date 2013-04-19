@@ -4,9 +4,12 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Permissions;
+using System.Security.Principal;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using GongSolutions.Wpf.DragDrop;
 using MahApps.Metro.Controls;
@@ -22,7 +25,7 @@ namespace PathSharp
         private ObservableCollection<string> paths = new ObservableCollection<string>();
         private Stack<string[]> history = new Stack<string[]>();
         private Stack<string[]> future = new Stack<string[]>();
-        private EnvironmentVariableTarget target = EnvironmentVariableTarget.Machine;
+        private EnvironmentVariableTarget target = EnvironmentVariableTarget.User;
         public MainWindow()
         {
             InitializeComponent();
@@ -42,6 +45,15 @@ namespace PathSharp
             GongSolutions.Wpf.DragDrop.DragDrop.SetIsDragSource(uxPaths, true);
             GongSolutions.Wpf.DragDrop.DragDrop.SetIsDropTarget(uxPaths, true);
             GongSolutions.Wpf.DragDrop.DragDrop.SetDropHandler(uxPaths, this);
+
+            if (!IsElevated)
+            {
+                (uxTabs.Items.GetItemAt(1) as TabItem).IsEnabled = false;
+            }
+            else
+            {
+                uxRestartAsAdminContainer.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void OnAddClicked(object sender, RoutedEventArgs e)
@@ -136,13 +148,31 @@ namespace PathSharp
             var from = paths.IndexOf(dropInfo.Data as string);
             var to = dropInfo.InsertIndex;
 
-            if (from < to)
-            {
-                to--;
-            }
-
             SaveHistory();
-            paths.Move(from, to);
+            var dataObject = dropInfo.Data as DataObject;
+            if (from < 0 && dataObject != null)
+            {
+                // External drag and drop
+                var droppedFilePaths = dataObject.GetData(DataFormats.FileDrop, true) as string[];
+                if (droppedFilePaths != null)
+                {
+                    var dirs = droppedFilePaths.Where(f => Directory.Exists(f));
+                    foreach (var dir in dirs)
+                    {
+                        paths.Insert(to, dir);
+                        to++;
+                    }
+                }
+            }
+            else
+            {
+                if (from < to)
+                {
+                    to--;
+                }
+
+                paths.Move(from, to);
+            }
             SavePath();
         }
 
@@ -227,8 +257,29 @@ namespace PathSharp
 
         private void uxTabsSelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            this.target = uxTabs.SelectedIndex == 0 ? EnvironmentVariableTarget.Machine : EnvironmentVariableTarget.User;
+            this.target = uxTabs.SelectedIndex == 0 ? EnvironmentVariableTarget.User : EnvironmentVariableTarget.Machine;
             LoadPath();
+        }
+
+        private static bool IsElevated
+        {
+            get
+            {
+                return new WindowsPrincipal
+                    (WindowsIdentity.GetCurrent()).IsInRole
+                    (WindowsBuiltInRole.Administrator);
+            }
+        }
+
+        private void uxRestartAsAdminClick(object sender, RoutedEventArgs e)
+        {
+            var exe = Assembly.GetEntryAssembly().Location;
+            Process.Start(new ProcessStartInfo()
+            {
+                Verb = "runas",
+                FileName = exe
+            });
+            this.Close();
         }
     }
 }

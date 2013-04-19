@@ -50,9 +50,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup>
-    <ApplicationManifest>PathSharp.exe.manifest</ApplicationManifest>
-  </PropertyGroup>
+  <PropertyGroup />
   <PropertyGroup>
     <ApplicationIcon>pathsharp.ico</ApplicationIcon>
   </PropertyGroup>
@@ -142,7 +140,6 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <None Include="PathSharp.exe.manifest" />
     <None Include="packages.config" />
     <None Include="PathSharpStrongNameKey.snk" />
     <None Include="Properties\Settings.settings">
