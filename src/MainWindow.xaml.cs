@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Permissions;
@@ -21,7 +22,7 @@ namespace PathSharp
         private ObservableCollection<string> paths = new ObservableCollection<string>();
         private Stack<string[]> history = new Stack<string[]>();
         private Stack<string[]> future = new Stack<string[]>();
-
+        private EnvironmentVariableTarget target = EnvironmentVariableTarget.Machine;
         public MainWindow()
         {
             InitializeComponent();
@@ -37,6 +38,10 @@ namespace PathSharp
             uxPaths.AddShortcut(new KeyGesture(Key.Up, ModifierKeys.Control), MoveUp);
             uxPaths.AddShortcut(new KeyGesture(Key.Down, ModifierKeys.Control), MoveDown);
             uxPaths.AddShortcut(new KeyGesture(Key.Delete), Delete);
+
+            GongSolutions.Wpf.DragDrop.DragDrop.SetIsDragSource(uxPaths, true);
+            GongSolutions.Wpf.DragDrop.DragDrop.SetIsDropTarget(uxPaths, true);
+            GongSolutions.Wpf.DragDrop.DragDrop.SetDropHandler(uxPaths, this);
         }
 
         private void OnAddClicked(object sender, RoutedEventArgs e)
@@ -46,10 +51,16 @@ namespace PathSharp
             dialog.UseDescriptionForTitle = true;
             if (dialog.ShowDialog() == true)
             {
-                SaveHistory();
-                paths.Add(dialog.SelectedPath);
-                SavePath();
+                AddPath(dialog.SelectedPath);
             }
+        }
+
+        private void AddPath(string path)
+        {
+            SaveHistory();
+            paths.Add(path);
+            SavePath();
+            uxPaths.ScrollIntoView(uxPaths.Items.GetItemAt(uxPaths.Items.Count - 1));
         }
 
         private void Delete()
@@ -144,7 +155,7 @@ namespace PathSharp
         private void SavePath()
         {
             var combined = string.Join(";", paths);
-            Task.Factory.StartNew(() => Environment.SetEnvironmentVariable("PATH", combined, EnvironmentVariableTarget.Machine));
+            Task.Factory.StartNew(() => Environment.SetEnvironmentVariable("PATH", combined, target));
         }
 
         private void LoadPath()
@@ -166,12 +177,58 @@ namespace PathSharp
         private void BackupPath()
         {
             var env = GetPathEnv();
-            File.WriteAllText("path-backup-" + DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".txt", env);
+            File.WriteAllText("path-backup-" + target + "-" + DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".txt", env);
         }
 
         private string GetPathEnv()
         {
-            return Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.Machine);
+            return Environment.GetEnvironmentVariable("PATH", target);
+        }
+
+        private void OnDrop(object sender, DragEventArgs e)
+        {
+            var droppedFilePaths = e.Data.GetData(DataFormats.FileDrop, true) as string[];
+            var dirs = droppedFilePaths.Where(f => Directory.Exists(f));
+            foreach (var dir in dirs)
+            {
+                AddPath(dir);
+            }
+        }
+
+        private void uxNewPathKeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Return)
+            {
+                var dir = uxNewPath.Text;
+                if (Directory.Exists(dir))
+                {
+                    AddPath(dir);
+                    uxNewPath.Text = "";
+                }
+            }
+        }
+
+        private void uxNewPathPopulating(object sender, System.Windows.Controls.PopulatingEventArgs e)
+        {
+            string text = uxNewPath.Text;
+
+            if (text.Length <= 0) return;
+
+            string dirname = Path.GetDirectoryName(text);
+            if (Directory.Exists(dirname))
+            {
+                var candidates = Directory
+                    .GetDirectories(dirname, "*.*", SearchOption.TopDirectoryOnly)
+                    .Where(d => d.StartsWith(dirname, StringComparison.InvariantCultureIgnoreCase)).ToArray();
+                uxNewPath.ItemsSource = candidates;
+                uxNewPath.PopulateComplete();
+            }
+        }
+
+        private void uxTabsSelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            this.target = uxTabs.SelectedIndex == 0 ? EnvironmentVariableTarget.Machine : EnvironmentVariableTarget.User;
+            LoadPath();
         }
     }
 }
