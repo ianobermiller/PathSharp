@@ -4,7 +4,7 @@
         xmlns:toolkit="clr-namespace:System.Windows.Controls;assembly=System.Windows.Controls.Input.Toolkit"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:System="clr-namespace:System;assembly=mscorlib" x:Class="PathSharp.MainWindow"
-        Title="PathSharp" Height="436.532" Width="713.561" Loaded="OnLoaded" ShowIconOnTitleBar="True" Icon="pathsharp.ico" ResizeMode="CanResizeWithGrip">
+        Title="PathSharp" x:Name="uxWindow" Height="436.532" Width="713.561" Loaded="OnLoaded" ShowIconOnTitleBar="True" Icon="pathsharp.ico" ResizeMode="CanResizeWithGrip">
     <Metro:MetroWindow.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -30,20 +30,35 @@
                     </Popup>
                 </Grid>
             </ControlTemplate>
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
         </ResourceDictionary>
     </Metro:MetroWindow.Resources>
     <DockPanel AllowDrop="True" Drop="OnDrop">
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
             <TabControl x:Name="uxTabs" SelectionChanged="uxTabsSelectionChanged">
                 <TabItem Header="User" />
-                <TabItem Header="Machine" />
+                <TabItem Header="Machine" IsEnabled="{Binding IsElevated}" />
             </TabControl>
-            <TextBlock x:Name="uxRestartAsAdminContainer" VerticalAlignment="Center">(<Hyperlink x:Name="uxRestartAsAdmin" Click="uxRestartAsAdminClick">restart as administrator to edit Machine-level vars</Hyperlink>)</TextBlock>
+            <TextBlock x:Name="uxRestartAsAdminContainer" VerticalAlignment="Center" Visibility="{Binding IsNotElevated, Converter={StaticResource BoolToVis}}">(<Hyperlink x:Name="uxRestartAsAdmin" Click="uxRestartAsAdminClick">restart as administrator to edit Machine-level vars</Hyperlink>)</TextBlock>
         </StackPanel>
         <Grid DockPanel.Dock="Bottom">
             <TextBlock Text="Type a path and hit enter to add..." Visibility="{Binding Text.IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}, ElementName=uxNewPath}" Foreground="Gray" Margin="6,6" />
             <toolkit:AutoCompleteBox DockPanel.Dock="Bottom" x:Name="uxNewPath" KeyUp="uxNewPathKeyUp" Populating="uxNewPathPopulating" Template="{DynamicResource AutoCompleteBoxControlTemplate}" />
         </Grid>
-        <ListBox DockPanel.Dock="Top" x:Name="uxPaths" TabIndex="1" />
+        <ListBox DockPanel.Dock="Top" x:Name="uxPaths" TabIndex="1">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" Tag="{Binding ElementName=uxWindow}">
+                        <TextBlock.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem IsEnabled="{Binding Parent.PlacementTarget.Tag.DataContext.IsElevated, RelativeSource={RelativeSource Self}}"
+                                          Header="{Binding Parent.PlacementTarget.Tag.DataContext.MoveToOtherContextMenuHeader, RelativeSource={RelativeSource Self}}"
+                                          Click="MoveItemToOtherTabClick" />
+                            </ContextMenu>
+                        </TextBlock.ContextMenu>
+                    </TextBlock>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
     </DockPanel>
 </Metro:MetroWindow>

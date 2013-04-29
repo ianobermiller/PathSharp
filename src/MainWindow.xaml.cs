@@ -22,12 +22,20 @@ namespace PathSharp
     /// </summary>
     public partial class MainWindow : MetroWindow, IDropTarget
     {
+        private bool isElevated = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
         private ObservableCollection<string> paths = new ObservableCollection<string>();
         private Stack<string[]> history = new Stack<string[]>();
         private Stack<string[]> future = new Stack<string[]>();
         private EnvironmentVariableTarget target = EnvironmentVariableTarget.User;
+
+        public string MoveToOtherContextMenuHeader { get; set; }
+        public bool IsElevated { get { return isElevated; } }
+        public bool IsNotElevated { get { return !isElevated; } }
+
         public MainWindow()
         {
+            this.MoveToOtherContextMenuHeader = "Move to Machine";
+            
             InitializeComponent();
 
             var permissions = new EnvironmentPermission(EnvironmentPermissionAccess.AllAccess, "PATH");
@@ -45,15 +53,6 @@ namespace PathSharp
             GongSolutions.Wpf.DragDrop.DragDrop.SetIsDragSource(uxPaths, true);
             GongSolutions.Wpf.DragDrop.DragDrop.SetIsDropTarget(uxPaths, true);
             GongSolutions.Wpf.DragDrop.DragDrop.SetDropHandler(uxPaths, this);
-
-            if (!IsElevated)
-            {
-                (uxTabs.Items.GetItemAt(1) as TabItem).IsEnabled = false;
-            }
-            else
-            {
-                uxRestartAsAdminContainer.Visibility = Visibility.Collapsed;
-            }
         }
 
         private void OnAddClicked(object sender, RoutedEventArgs e)
@@ -258,17 +257,8 @@ namespace PathSharp
         private void uxTabsSelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             this.target = uxTabs.SelectedIndex == 0 ? EnvironmentVariableTarget.User : EnvironmentVariableTarget.Machine;
+            this.MoveToOtherContextMenuHeader = uxTabs.SelectedIndex == 0 ? "Move to Machine" : "Move to User";
             LoadPath();
-        }
-
-        private static bool IsElevated
-        {
-            get
-            {
-                return new WindowsPrincipal
-                    (WindowsIdentity.GetCurrent()).IsInRole
-                    (WindowsBuiltInRole.Administrator);
-            }
         }
 
         private void uxRestartAsAdminClick(object sender, RoutedEventArgs e)
@@ -280,6 +270,21 @@ namespace PathSharp
                 FileName = exe
             });
             this.Close();
+        }
+
+        private void MoveItemToOtherTabClick(object sender, RoutedEventArgs e)
+        {
+            // Remove from this view
+            var index = uxPaths.SelectedIndex;
+            if (index < 0) return;
+            var path = paths[index];
+            Delete();
+
+            // Switch views
+            uxTabs.SelectedIndex = uxTabs.SelectedIndex == 0 ? 1 : 0;
+
+            // Add to this view
+            AddPath(path);
         }
     }
 }
